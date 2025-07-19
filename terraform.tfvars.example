@@ -1,0 +1,21 @@
+# WOPS AI Terraform Configuration
+# Copy this file to terraform.tfvars and update with your values
+
+# AWS Configuration
+aws_region = "us-west-2"
+project_name = "wops-ai"
+environment = "development"
+
+# Snowflake Configuration (required)
+snowflake_account = "your-snowflake-account"
+snowflake_user = "your-snowflake-user"
+snowflake_warehouse = "your-snowflake-warehouse"
+snowflake_database = "your-snowflake-database"
+
+# Docker Images (will be set automatically by deploy script)
+backend_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/wops-ai-backend:latest"
+frontend_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/wops-ai-frontend:latest"
+
+# Optional: Custom domain and SSL
+# domain_name = "wops-ai.yourdomain.com"
+# certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/your-cert-id"

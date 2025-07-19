@@ -47,3 +47,13 @@ variable "certificate_arn" {
   type        = string
   default     = null
 }
+
+variable "backend_image_uri" {
+  description = "Backend Docker image URI"
+  type        = string
+}
+
+variable "frontend_image_uri" {
+  description = "Frontend Docker image URI"
+  type        = string
+}
