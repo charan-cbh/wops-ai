@@ -1,0 +1,47 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.0.3
+python-multipart==0.0.6
+sqlalchemy>=1.4.0,<2.0.0
+snowflake-connector-python==3.6.0
+snowflake-sqlalchemy==1.5.1
+cryptography==41.0.7
+openai==1.3.7
+anthropic==0.7.8
+google-generativeai==0.3.2
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+httpx==0.25.2
+aiofiles==23.2.1
+pandas==2.1.4
+numpy==1.25.2
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Authentication and User Management
+PyJWT==2.8.0
+bcrypt==4.1.2
+psycopg2-binary==2.9.9
+redis==5.0.1
+
+# AWS Services
+boto3==1.34.34
+botocore==1.34.34
+
+# Email services
+boto3-stubs[ses]==1.34.34
+types-redis==4.6.0.11
+
+# Additional utilities
+uuid==1.30
+email-validator==2.1.0
+
+# Google OAuth
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# Local development
+authlib==1.2.1

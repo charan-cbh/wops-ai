@@ -1,0 +1,77 @@
+.PHONY: help install dev-simple build test clean
+
+help:
+	@echo "Available commands:"
+	@echo "  install      - Install dependencies"
+	@echo "  dev-simple   - Start development servers (no database)"
+	@echo "  dev-docker   - Start with Docker (simplified)"
+	@echo "  build        - Build Docker images"
+	@echo "  test         - Run tests"
+	@echo "  clean        - Clean up containers"
+
+install:
+	@echo "Installing backend dependencies..."
+	cd backend && pip install -r requirements.txt
+	@echo "Installing frontend dependencies..."
+	cd frontend && npm install
+
+dev-simple:
+	@echo "Starting development environment (no external dependencies)..."
+	@echo "Make sure you have your .env file configured with OpenAI and Snowflake credentials"
+	@echo "Starting backend..."
+	cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+	@echo "Starting frontend..."
+	cd frontend && npm run dev &
+	@echo "Development servers started!"
+	@echo "Backend API: http://localhost:8000"
+	@echo "Frontend: http://localhost:3000"
+	@echo "API Docs: http://localhost:8000/docs"
+
+dev-docker:
+	@echo "Starting with Docker (simplified)..."
+	docker-compose -f docker-compose.simple.yml up --build
+
+build:
+	@echo "Building Docker images..."
+	docker-compose -f docker-compose.simple.yml build
+
+test:
+	@echo "Running backend tests..."
+	cd backend && python -m pytest
+	@echo "Running frontend tests..."
+	cd frontend && npm run test
+
+clean:
+	@echo "Cleaning up containers..."
+	docker-compose -f docker-compose.simple.yml down
+	docker system prune -f
+
+check-env:
+	@echo "Checking environment configuration..."
+	@python3 -c "
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+required_vars = [
+    'OPENAI_API_KEY',
+    'SNOWFLAKE_ACCOUNT',
+    'SNOWFLAKE_USER',
+    'SNOWFLAKE_WAREHOUSE',
+    'SNOWFLAKE_DATABASE'
+]
+
+missing = []
+for var in required_vars:
+    if not os.getenv(var):
+        missing.append(var)
+
+if missing:
+    print('❌ Missing required environment variables:')
+    for var in missing:
+        print(f'  - {var}')
+    print('\\nPlease update your .env file')
+    exit(1)
+else:
+    print('✅ All required environment variables are set')
+"

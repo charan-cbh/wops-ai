@@ -1,0 +1,40 @@
+{
+  "name": "wops-ai-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Worker Operations BI Chatbot Frontend",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.6.2",
+    "chart.js": "^4.5.0",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.294.0",
+    "next": "14.0.3",
+    "postcss": "^8.4.32",
+    "react": "18.2.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "18.2.0",
+    "react-markdown": "^9.0.1",
+    "react-syntax-highlighter": "^15.5.0",
+    "recharts": "^2.8.0",
+    "tailwindcss": "^3.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "20.9.4",
+    "@types/react": "18.2.38",
+    "@types/react-dom": "18.2.17",
+    "@types/react-syntax-highlighter": "^15.5.11",
+    "eslint": "8.54.0",
+    "eslint-config-next": "14.0.3",
+    "typescript": "5.3.2"
+  }
+}
