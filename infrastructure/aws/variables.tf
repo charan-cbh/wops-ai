@@ -36,6 +36,12 @@ variable "snowflake_database" {
   type        = string
 }
 
+variable "snowflake_schema" {
+  description = "Snowflake schema name"
+  type        = string
+  default     = "PUBLIC"
+}
+
 variable "domain_name" {
   description = "Domain name for the application"
   type        = string

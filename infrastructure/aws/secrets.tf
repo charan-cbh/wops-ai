@@ -17,9 +17,21 @@ resource "aws_secretsmanager_secret" "google_key" {
   recovery_window_in_days = 7
 }
 
-resource "aws_secretsmanager_secret" "snowflake_password" {
-  name                    = "${var.project_name}-snowflake-password"
-  description            = "Snowflake Password"
+resource "aws_secretsmanager_secret" "snowflake_private_key" {
+  name                    = "${var.project_name}-snowflake-private-key"
+  description            = "Snowflake Private Key"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret" "snowflake_private_key_passphrase" {
+  name                    = "${var.project_name}-snowflake-private-key-passphrase"
+  description            = "Snowflake Private Key Passphrase"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret" "jwt_secret" {
+  name                    = "${var.project_name}-jwt-secret"
+  description            = "JWT Secret Key"
   recovery_window_in_days = 7
 }
 
@@ -51,9 +63,27 @@ resource "aws_secretsmanager_secret_version" "google_key_placeholder" {
   }
 }
 
-resource "aws_secretsmanager_secret_version" "snowflake_password_placeholder" {
-  secret_id     = aws_secretsmanager_secret.snowflake_password.id
-  secret_string = "REPLACE_WITH_ACTUAL_PASSWORD"
+resource "aws_secretsmanager_secret_version" "snowflake_private_key_placeholder" {
+  secret_id     = aws_secretsmanager_secret.snowflake_private_key.id
+  secret_string = "REPLACE_WITH_ACTUAL_PRIVATE_KEY"
+  
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "snowflake_private_key_passphrase_placeholder" {
+  secret_id     = aws_secretsmanager_secret.snowflake_private_key_passphrase.id
+  secret_string = "REPLACE_WITH_ACTUAL_PASSPHRASE"
+  
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "jwt_secret_placeholder" {
+  secret_id     = aws_secretsmanager_secret.jwt_secret.id
+  secret_string = "REPLACE_WITH_ACTUAL_JWT_SECRET"
   
   lifecycle {
     ignore_changes = [secret_string]
