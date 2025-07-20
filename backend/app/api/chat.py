@@ -313,10 +313,12 @@ async def get_table_sample(table_name: str, limit: int = 10):
     """Get sample data from a table"""
     try:
         sample_df = bi_service.snowflake_db.get_table_sample(table_name, limit)
+        # Clean the DataFrame to ensure JSON serialization compatibility
+        cleaned_df = bi_service._clean_dataframe_for_json(sample_df)
         return {
             "table_name": table_name,
-            "sample_data": sample_df.to_dict('records'),
-            "columns": sample_df.columns.tolist()
+            "sample_data": cleaned_df.to_dict('records'),
+            "columns": cleaned_df.columns.tolist()
         }
     except Exception as e:
         logger.error(f"Table sample error: {str(e)}")

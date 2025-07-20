@@ -146,13 +146,7 @@ INSTRUCTIONS: Only provide responses related to Worker Operations data analysis,
                 
                 assistant_message = messages.data[0]
                 # Handle different content formats in v2 API
-                if hasattr(assistant_message.content[0], 'text'):
-                    if hasattr(assistant_message.content[0].text, 'value'):
-                        content = assistant_message.content[0].text.value
-                    else:
-                        content = assistant_message.content[0].text
-                else:
-                    content = str(assistant_message.content[0])
+                content = self._extract_content_from_message(assistant_message)
                 
                 return AIResponse(
                     content=content,
@@ -165,6 +159,70 @@ INSTRUCTIONS: Only provide responses related to Worker Operations data analysis,
                 
         except Exception as e:
             raise Exception(f"OpenAI Assistant API error: {str(e)}")
+    
+    def _extract_content_from_message(self, assistant_message):
+        """Robust content extraction from OpenAI Assistant API response"""
+        try:
+            content_items = assistant_message.content
+            
+            # Handle single content item
+            if len(content_items) == 1:
+                item = content_items[0]
+                
+                # Handle text content with different formats
+                if hasattr(item, 'type') and item.type == 'text':
+                    if hasattr(item, 'text'):
+                        # Check if text is a dict with 'value' key
+                        if isinstance(item.text, dict) and 'value' in item.text:
+                            return str(item.text['value'])
+                        elif hasattr(item.text, 'value'):
+                            return str(item.text.value)
+                        else:
+                            return str(item.text)
+                
+                # Handle legacy format
+                if hasattr(item, 'text'):
+                    if isinstance(item.text, dict) and 'value' in item.text:
+                        return str(item.text['value'])
+                    elif hasattr(item.text, 'value'):
+                        return str(item.text.value)
+                    else:
+                        return str(item.text)
+                
+                # Fallback - convert to string
+                return str(item)
+            
+            # Handle multiple content items - concatenate text parts
+            text_parts = []
+            for item in content_items:
+                if hasattr(item, 'type') and item.type == 'text':
+                    if hasattr(item, 'text'):
+                        if isinstance(item.text, dict) and 'value' in item.text:
+                            text_parts.append(str(item.text['value']))
+                        elif hasattr(item.text, 'value'):
+                            text_parts.append(str(item.text.value))
+                        else:
+                            text_parts.append(str(item.text))
+                elif hasattr(item, 'text'):
+                    if isinstance(item.text, dict) and 'value' in item.text:
+                        text_parts.append(str(item.text['value']))
+                    elif hasattr(item.text, 'value'):
+                        text_parts.append(str(item.text.value))
+                    else:
+                        text_parts.append(str(item.text))
+                else:
+                    # For non-text items, add a placeholder or description
+                    text_parts.append(f"[{getattr(item, 'type', 'unknown')} content]")
+            
+            return '\n'.join(text_parts) if text_parts else str(content_items[0])
+            
+        except Exception as e:
+            # Log the error and return a safe fallback
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error extracting content from OpenAI response: {e}")
+            logger.error(f"Response structure: {assistant_message}")
+            return f"Error processing response: {str(e)}"
     
     def _check_domain_relevance(self, user_message: str) -> Dict[str, Any]:
         """Check if the user message is relevant to Worker Operations BI - smart filtering"""

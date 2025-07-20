@@ -97,6 +97,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -166,6 +173,90 @@ resource "aws_ecs_task_definition" "backend" {
 
       environment = [
         {
+          name  = "ENVIRONMENT"
+          value = "production"
+        },
+        {
+          name  = "USE_LOCAL_DB"
+          value = "false"
+        },
+        {
+          name  = "USE_LOCAL_EMAIL"
+          value = "false"
+        },
+        {
+          name  = "USE_LOCAL_STORAGE"
+          value = "false"
+        },
+        {
+          name  = "DEBUG"
+          value = "false"
+        },
+        {
+          name  = "APP_NAME"
+          value = "Worker Operations BI Chatbot"
+        },
+        {
+          name  = "VERSION"
+          value = "1.0.0"
+        },
+        {
+          name  = "ACCESS_TOKEN_EXPIRE_MINUTES"
+          value = "30"
+        },
+        {
+          name  = "REFRESH_TOKEN_EXPIRE_DAYS"
+          value = "7"
+        },
+        {
+          name  = "FRONTEND_URL"
+          value = "https://${aws_lb.main.dns_name}"
+        },
+        {
+          name  = "DEFAULT_AI_PROVIDER"
+          value = "openai"
+        },
+        {
+          name  = "USERS_TABLE"
+          value = aws_dynamodb_table.users.name
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "EMAIL_BACKEND"
+          value = "ses"
+        },
+        {
+          name  = "SES_SENDER_EMAIL"
+          value = "noreply@clipboardhealth.com"
+        },
+        {
+          name  = "ALLOWED_EMAIL_DOMAINS"
+          value = "clipboardhealth.com"
+        },
+        {
+          name  = "VERIFICATION_EXPIRY_HOURS"
+          value = "24"
+        },
+        {
+          name  = "PASSWORD_RESET_EXPIRY_HOURS"
+          value = "1"
+        },
+        {
+          name  = "MAX_FILE_SIZE"
+          value = "10485760"
+        },
+        {
+          name  = "ALLOWED_FILE_TYPES"
+          value = ".pdf,.txt,.csv,.json,.xlsx"
+        },
+        {
+          name  = "S3_BUCKET_NAME"
+          value = aws_s3_bucket.files.bucket
+        },
+        {
           name  = "SNOWFLAKE_ACCOUNT"
           value = var.snowflake_account
         },
@@ -180,6 +271,46 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "SNOWFLAKE_DATABASE"
           value = var.snowflake_database
+        },
+        {
+          name  = "SNOWFLAKE_SCHEMA"
+          value = var.snowflake_schema
+        },
+        {
+          name  = "OPENAI_ASSISTANT_ID"
+          value = "asst_gdVxdkcSfEE1I7bpkXChUUuY"
+        },
+        {
+          name  = "VERIFICATION_TABLE"
+          value = aws_dynamodb_table.email_verification.name
+        },
+        {
+          name  = "PASSWORD_RESET_TABLE"
+          value = aws_dynamodb_table.password_reset.name
+        },
+        {
+          name  = "USAGE_TABLE"
+          value = aws_dynamodb_table.user_usage.name
+        },
+        {
+          name  = "TOKENS_TABLE"
+          value = "wops-refresh-tokens"
+        },
+        {
+          name  = "ADMIN_EMAIL"
+          value = "admin@clipboardhealth.com"
+        },
+        {
+          name  = "ADMIN_PASSWORD"
+          value = "admin123"
+        },
+        {
+          name  = "CHAT_STORAGE_TYPE"
+          value = "dynamodb"
+        },
+        {
+          name  = "DYNAMODB_MESSAGES_TABLE"
+          value = aws_dynamodb_table.messages.name
         }
       ]
 
@@ -197,8 +328,16 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = aws_secretsmanager_secret.google_key.arn
         },
         {
-          name      = "SNOWFLAKE_PASSWORD"
-          valueFrom = aws_secretsmanager_secret.snowflake_password.arn
+          name      = "SNOWFLAKE_PRIVATE_KEY"
+          valueFrom = aws_secretsmanager_secret.snowflake_private_key.arn
+        },
+        {
+          name      = "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"
+          valueFrom = aws_secretsmanager_secret.snowflake_private_key_passphrase.arn
+        },
+        {
+          name      = "JWT_SECRET_KEY"
+          valueFrom = aws_secretsmanager_secret.jwt_secret.arn
         }
       ]
 
@@ -212,7 +351,7 @@ resource "aws_ecs_task_definition" "backend" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+        command     = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -270,8 +409,9 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = aws_subnet.private[*].id
-    security_groups = [aws_security_group.ecs.id]
+    subnets          = aws_subnet.public[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -291,8 +431,9 @@ resource "aws_ecs_service" "frontend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = aws_subnet.private[*].id
-    security_groups = [aws_security_group.ecs.id]
+    subnets          = aws_subnet.public[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -301,7 +442,7 @@ resource "aws_ecs_service" "frontend" {
     container_port   = 3000
   }
 
-  depends_on = [aws_lb_listener.frontend]
+  depends_on = [aws_lb_listener.main]
 }
 
 # Data sources

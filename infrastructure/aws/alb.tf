@@ -62,15 +62,101 @@ resource "aws_lb_target_group" "frontend" {
   }
 }
 
-# Listeners
-resource "aws_lb_listener" "frontend" {
+# Listeners with path-based routing
+resource "aws_lb_listener" "main" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
   protocol          = "HTTP"
 
+  # Default action: route to frontend
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.frontend.arn
+  }
+}
+
+# Route /api/* to backend
+resource "aws_lb_listener_rule" "api_route" {
+  listener_arn = aws_lb_listener.main.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+}
+
+# Route /health to backend (for health checks)
+resource "aws_lb_listener_rule" "health_route" {
+  listener_arn = aws_lb_listener.main.arn
+  priority     = 101
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/health"]
+    }
+  }
+}
+
+# Route /docs to backend  
+resource "aws_lb_listener_rule" "docs_route" {
+  listener_arn = aws_lb_listener.main.arn
+  priority     = 102
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/docs*"]
+    }
+  }
+}
+
+# Route /redoc to backend
+resource "aws_lb_listener_rule" "redoc_route" {
+  listener_arn = aws_lb_listener.main.arn
+  priority     = 103
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/redoc*"]
+    }
+  }
+}
+
+# Route /openapi.json to backend
+resource "aws_lb_listener_rule" "openapi_route" {
+  listener_arn = aws_lb_listener.main.arn
+  priority     = 104
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/openapi.json"]
+    }
   }
 }
 
