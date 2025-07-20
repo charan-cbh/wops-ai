@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     app_name: str = "Worker Operations BI Chatbot"
     version: str = "1.0.0"
     
-    # Environment flags
+    # Environment flags (automatically set based on environment)
     use_local_db: bool = True
     use_local_email: bool = True
     use_local_storage: bool = True
@@ -141,12 +141,12 @@ class Settings(BaseSettings):
             }
         else:
             return {
-                'type': 'postgresql',
-                'host': self.rds_host,
-                'port': self.rds_port,
-                'database': self.rds_database,
-                'user': self.rds_user,
-                'password': self.rds_password
+                'type': 'dynamodb',
+                'aws_region': self.aws_region,
+                'users_table': self.users_table,
+                'verification_table': self.verification_table,
+                'password_reset_table': self.password_reset_table,
+                'usage_table': self.usage_table
             }
     
     def get_email_config(self) -> Dict[str, Any]:

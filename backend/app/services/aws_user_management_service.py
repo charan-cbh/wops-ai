@@ -144,14 +144,9 @@ class AWSUserManagementService:
     def _determine_storage_type(self, storage_type: str) -> str:
         """Determine which storage backend to use"""
         if storage_type == "auto":
-            # Check environment variables to decide
-            if os.getenv('USE_DYNAMODB', '').lower() == 'true':
-                return "dynamodb"
-            elif os.getenv('RDS_HOST'):
-                return "postgresql"
-            else:
-                # Default to DynamoDB for AWS environments
-                return "dynamodb"
+            # For AWS environments, always use DynamoDB
+            # For local development, the local service will be used instead
+            return "dynamodb"
         return storage_type.lower()
     
     def _init_postgresql(self):
@@ -476,7 +471,7 @@ class AWSUserManagementService:
             """, (
                 user.user_id, user.email, password_hash, user.role.value,
                 user.usage_plan.value, user.status.value, user.is_email_verified,
-                user.created_at, user.updated_at, user.metadata or {}
+                user.created_at, user.updated_at, psycopg2.extras.Json(user.metadata or {})
             ))
             conn.commit()
     

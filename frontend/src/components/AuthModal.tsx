@@ -5,7 +5,7 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: (email: string, password: string) => Promise<void>;
-  onRegister: (email: string) => Promise<void>;
+  onRegister: (email: string) => Promise<{message?: string} | void>;
 }
 
 export default function AuthModal({ isOpen, onClose, onLogin, onRegister }: AuthModalProps) {
@@ -32,7 +32,7 @@ export default function AuthModal({ isOpen, onClose, onLogin, onRegister }: Auth
         setPassword('');
       } else {
         const result = await onRegister(email);
-        setSuccessMessage(result.message || 'Registration successful! Please check your email for verification instructions.');
+        setSuccessMessage(result?.message || 'Registration successful! Please check your email for verification instructions.');
         setEmail('');
       }
     } catch (err: any) {
