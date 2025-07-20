@@ -97,24 +97,61 @@ class ScalableChatService:
                 conn.close()
 
     def _create_postgres_tables(self):
-        """Create PostgreSQL tables if they don't exist"""
+        """Create PostgreSQL tables if they don't exist and handle migrations"""
         with self._get_postgres_connection() as conn:
             cursor = conn.cursor()
             
-            # Users table (for user management)
+            # Check if users table exists and what columns it has
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    role VARCHAR(50) DEFAULT 'user',
-                    is_active BOOLEAN DEFAULT true,
-                    usage_limit INTEGER DEFAULT 100,
-                    usage_count INTEGER DEFAULT 0,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' AND table_schema = 'public'
             """)
+            existing_columns = [row[0] for row in cursor.fetchall()]
+            
+            if not existing_columns:
+                # Table doesn't exist, create it with all columns
+                cursor.execute("""
+                    CREATE TABLE users (
+                        user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        password_hash VARCHAR(255) NOT NULL,
+                        role VARCHAR(50) DEFAULT 'user',
+                        usage_plan VARCHAR(50) DEFAULT 'free',
+                        status VARCHAR(50) DEFAULT 'active',
+                        is_active BOOLEAN DEFAULT true,
+                        is_email_verified BOOLEAN DEFAULT false,
+                        usage_limit INTEGER DEFAULT 100,
+                        usage_count INTEGER DEFAULT 0,
+                        last_login TIMESTAMP WITH TIME ZONE,
+                        failed_login_attempts INTEGER DEFAULT 0,
+                        locked_until TIMESTAMP WITH TIME ZONE,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+            else:
+                # Table exists, add missing columns
+                required_columns = {
+                    'usage_plan': 'VARCHAR(50) DEFAULT \'free\'',
+                    'status': 'VARCHAR(50) DEFAULT \'active\'',
+                    'is_email_verified': 'BOOLEAN DEFAULT false',
+                    'last_login': 'TIMESTAMP WITH TIME ZONE',
+                    'failed_login_attempts': 'INTEGER DEFAULT 0',
+                    'locked_until': 'TIMESTAMP WITH TIME ZONE'
+                }
+                
+                for col_name, col_definition in required_columns.items():
+                    if col_name not in existing_columns:
+                        try:
+                            cursor.execute(f"""
+                                ALTER TABLE users 
+                                ADD COLUMN {col_name} {col_definition}
+                            """)
+                            logger.info(f"Added column {col_name} to users table")
+                        except Exception as e:
+                            logger.warning(f"Could not add column {col_name}: {e}")
+                            # Continue with other columns
             
             # Chat sessions table
             cursor.execute("""
@@ -155,6 +192,14 @@ class ScalableChatService:
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_sessions_user_updated 
                 ON chat_sessions(user_id, updated_at);
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_users_email 
+                ON users(email);
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_users_status 
+                ON users(status);
             """)
             
             conn.commit()

@@ -6,7 +6,14 @@ import logging
 from typing import Dict, Any, Optional, List
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.services.user_management_service import user_management_service, UserRole
+from app.services.local_user_management_service import UserRole
+
+# Import appropriate user service based on environment
+from app.core.config import settings
+if settings.is_local:
+    from app.services.local_user_management_service import local_user_management_service as user_management_service
+else:
+    from app.services.aws_user_management_service import aws_user_management_service as user_management_service
 
 logger = logging.getLogger(__name__)
 

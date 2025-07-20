@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 from typing import Dict, Any, List, Optional
-from ..db.snowflake_simple import simple_snowflake_db
+from ..db.snowflake_simple import get_snowflake_connection
 from ..db.snowflake_connection import SnowflakeQueryBuilder
 from ..core.ai_provider import ai_manager
 from .confluence_service import confluence_service
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 class BIService:
     def __init__(self):
-        self.snowflake_db = simple_snowflake_db
-        self.query_builder = SnowflakeQueryBuilder(simple_snowflake_db)
+        self.snowflake_db = get_snowflake_connection()
+        self.query_builder = SnowflakeQueryBuilder(self.snowflake_db)
         self.ai_manager = ai_manager
     
     async def process_natural_language_query(self, user_query: str, context: Optional[Dict[str, Any]] = None, conversation_history: Optional[List[Dict[str, str]]] = None, session_id: Optional[str] = None) -> Dict[str, Any]:

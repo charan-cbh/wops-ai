@@ -45,9 +45,15 @@ class SimpleSnowflakeConnection:
         }
         
         # Add private key authentication if configured
-        if settings.snowflake_private_key_path:
+        try:
             private_key = self._load_private_key()
-            self.connection_params['private_key'] = private_key
+            if private_key:
+                self.connection_params['private_key'] = private_key
+            else:
+                logger.warning("No private key available, Snowflake connection may fail")
+        except Exception as e:
+            logger.warning(f"Could not load Snowflake private key: {e}")
+            # Continue without private key - connection will fail gracefully
         
         self.connection = None
         
@@ -62,10 +68,69 @@ class SimpleSnowflakeConnection:
     def _load_private_key(self):
         """Load the private key for Snowflake authentication"""
         try:
-            # Check if file exists
-            if not os.path.exists(settings.snowflake_private_key_path):
-                raise FileNotFoundError(f"Private key file not found: {settings.snowflake_private_key_path}")
+            # Try AWS Secrets Manager first (for production)
+            if not settings.is_local and os.getenv('AWS_REGION'):
+                return self._load_private_key_from_secrets_manager()
             
+            # Fall back to file-based key (for local development)
+            elif settings.snowflake_private_key_path and os.path.exists(settings.snowflake_private_key_path):
+                return self._load_private_key_from_file()
+            
+            else:
+                logger.warning("No Snowflake private key configured")
+                return None
+            
+        except Exception as e:
+            logger.error(f"Failed to load private key: {str(e)}")
+            raise
+    
+    def _load_private_key_from_secrets_manager(self):
+        """Load private key from AWS Secrets Manager"""
+        try:
+            import boto3
+            from botocore.exceptions import ClientError
+            
+            secrets_client = boto3.client('secretsmanager', region_name=os.getenv('AWS_REGION', 'us-west-2'))
+            
+            # Get private key from secrets manager
+            try:
+                response = secrets_client.get_secret_value(SecretId='wops-ai-snowflake-private-key')
+                private_key_data = response['SecretString'].encode('utf-8')
+            except ClientError as e:
+                logger.error(f"Could not retrieve Snowflake private key from Secrets Manager: {e}")
+                raise
+            
+            # Get passphrase if available
+            passphrase = None
+            try:
+                response = secrets_client.get_secret_value(SecretId='wops-ai-snowflake-private-key-passphrase')
+                passphrase = response['SecretString'].encode('utf-8')
+            except ClientError:
+                logger.info("No passphrase found for Snowflake private key")
+            
+            # Load the private key
+            private_key = load_pem_private_key(
+                private_key_data,
+                password=passphrase,
+            )
+            
+            # Serialize the private key to DER format for Snowflake
+            private_key_der = private_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+            
+            logger.info("Successfully loaded Snowflake private key from AWS Secrets Manager")
+            return private_key_der
+            
+        except Exception as e:
+            logger.error(f"Failed to load private key from Secrets Manager: {str(e)}")
+            raise
+    
+    def _load_private_key_from_file(self):
+        """Load private key from local file"""
+        try:
             with open(settings.snowflake_private_key_path, 'rb') as key_file:
                 private_key_data = key_file.read()
             
@@ -86,10 +151,11 @@ class SimpleSnowflakeConnection:
                 encryption_algorithm=serialization.NoEncryption()
             )
             
+            logger.info("Successfully loaded Snowflake private key from file")
             return private_key_der
             
         except Exception as e:
-            logger.error(f"Failed to load private key: {str(e)}")
+            logger.error(f"Failed to load private key from file: {str(e)}")
             raise
     
     def _initialize_connection(self):
@@ -372,5 +438,22 @@ class SimpleSnowflakeConnection:
             self.connection.close()
 
 
-# Create a global instance
-simple_snowflake_db = SimpleSnowflakeConnection()
+# Create a global instance (lazy initialization)
+simple_snowflake_db = None
+
+def get_snowflake_connection():
+    global simple_snowflake_db
+    if simple_snowflake_db is None:
+        try:
+            simple_snowflake_db = SimpleSnowflakeConnection()
+        except Exception as e:
+            print(f"Warning: Failed to initialize Snowflake connection: {e}")
+            print("Snowflake features will be disabled.")
+            # Return a mock object that doesn't break the app
+            class MockSnowflakeConnection:
+                def execute_query(self, *args, **kwargs):
+                    raise Exception("Snowflake connection not available")
+                def close(self):
+                    pass
+            simple_snowflake_db = MockSnowflakeConnection()
+    return simple_snowflake_db
